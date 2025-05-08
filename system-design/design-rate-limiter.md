@@ -350,6 +350,20 @@ Rate Limit Requests with Iptables: https://blog.programster.org/rate-limit-reque
 
 ## Step 2 - Machine Coding
 
+### Design Patterns
+
+- Strategy Pattern: Allows for flexibility in changing rate-limiting algorithms without modifying the client code.
+
+- Singleton Pattern: Ensures only one instance of the rate limiter exists, maintaining a consistent state.
+
+- Factory Pattern: Encapsulates the creation logic for different rate-limiting strategies, promoting clean code and adherence to the Open/Closed principle.
+
+
+### Multiple Algorithms :
+- Fixed Window Algorithm: Counts the number of requests in fixed time windows.
+
+- Sliding Window Algorithm: Uses a rolling time window to count requests.
+
 ### RateLimiter Interface
 
 ```c++
@@ -399,3 +413,137 @@ public class FixedWindowRateLimiter implements RateLimiter {
 }
 }
 ```
+
+### SlidingWindowRateLimiter Class
+
+```c++
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Queue;
+import java.util.LinkedList;
+
+public class SlidingWindowRateLimiter implements RateLimiter {
+    private final int maxRequests;
+    private final long windowSizeInMillis;
+    private Map<String, Queue<Long>> requestTimestamps;
+
+    public SlidingWindowRateLimiter(int maxRequests, long windowSizeInMillis) {
+        this.maxRequests = maxRequests;
+        this.windowSizeInMillis = windowSizeInMillis;
+        this.requestTimestamps = new HashMap<>();
+    }
+
+    @Override
+    public boolean allowRequest(String clientId) {
+        long currentTime = System.currentTimeMillis();
+        requestTimestamps.putIfAbsent(clientId, new LinkedList<>());
+
+        Queue<Long> timestamps = requestTimestamps.get(clientId);
+        while (!timestamps.isEmpty() && currentTime - timestamps.peek() > windowSizeInMillis) {
+            timestamps.poll();
+        }
+
+        if (timestamps.size() < maxRequests) {
+            timestamps.add(currentTime);
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+
+### RateLimiterFactory Class
+
+```c++
+public class RateLimiterFactory {
+    public static RateLimiter createRateLimiter(String type, int maxRequests, long windowSizeInMillis) {
+        switch (type.toLowerCase()) {
+            case "fixed":
+                return new FixedWindowRateLimiter(maxRequests, windowSizeInMillis);
+            case "sliding":
+                return new SlidingWindowRateLimiter(maxRequests, windowSizeInMillis);
+            default:
+                throw new IllegalArgumentException("Unknown rate limiter type");
+        }
+    }
+}
+```
+
+
+### Singleton RateLimiterManager Class
+
+```c++
+public class RateLimiterManager {
+    private static RateLimiterManager instance;
+    private RateLimiter rateLimiter;
+
+    private RateLimiterManager() {
+        // Example initialization with a fixed window rate limiter
+        this.rateLimiter = RateLimiterFactory.createRateLimiter("fixed", 100, 60000);
+    }
+
+    public static RateLimiterManager getInstance() {
+        if (instance == null) {
+            synchronized (RateLimiterManager.class) {
+                if (instance == null) {
+                    instance = new RateLimiterManager();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public boolean allowRequest(String clientId) {
+        return rateLimiter.allowRequest(clientId);
+    }
+}
+```
+
+
+### Main Class to Test the Implementation
+
+```c++
+public class Main {
+    public static void main(String[] args) {
+        RateLimiter fixedWindowRateLimiter = RateLimiterFactory.createRateLimiter("fixed", 10, 60000);
+        RateLimiter slidingWindowRateLimiter = RateLimiterFactory.createRateLimiter("sliding", 10, 60000);
+
+        // Testing Fixed Window Rate Limiter
+        System.out.println("Fixed Window Rate Limiter:");
+        for (int i = 0; i < 12; i++) {
+            System.out.println(fixedWindowRateLimiter.allowRequest("client1"));
+        }
+
+        // Testing Sliding Window Rate Limiter
+        System.out.println("Sliding Window Rate Limiter:");
+        for (int i = 0; i < 12; i++) {
+            System.out.println(slidingWindowRateLimiter.allowRequest("client2"));
+        }
+    }
+}
+```
+
+
+### Explaination
+
+- RateLimiter Interface: Defines the contract for any rate limiter.
+
+- FixedWindowRateLimiter and SlidingWindowRateLimiter Classes: Implement the fixed window and sliding window rate-limiting algorithms.
+
+- RateLimiterFactory Class: Provides a factory method to create instances of different rate limiters.
+
+- RateLimiterManager Class: Implements the Singleton pattern to ensure a single instance of the rate limiter.
+
+
+### Limitation of above design 
+
+- Lack of Persistence: The current design doesn't persist the rate-limiting state. If the system restarts, all counters and timestamps will reset. This could lead to abuse if the service is restarted frequently.
+
+- Single Point of Failure: The Singleton pattern used for RateLimiterManager introduces a single point of failure. If the instance is compromised or corrupted, it can affect the entire system's rate limiting.
+
+- Scalability Issues: The current design is more suited for single-threaded environments. For multi-threaded or distributed systems, additional mechanisms are required to ensure consistency and scalability (e.g., using distributed data stores like Redis).
+
+- Granularity of Configuration Updates: Updating the configuration applies globally to all clients. This design does not support per-client rate-limiting configuration, which might be necessary for more fine-grained control.
+
+
