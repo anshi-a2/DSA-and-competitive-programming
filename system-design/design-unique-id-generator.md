@@ -83,7 +83,109 @@ Each section is explained below:
 Datacenter IDs and machine IDs are chosen at the startup time, generally fixed once the system is up running. Any changes in datacenter IDs and machine IDs require careful review since an accidental change in those values can lead to ID conflicts. Timestamp and sequence numbers are generated when the ID generator is running.
 
 
+### Machine Coding 
 
+## Id generator class
+
+```cpp
+public class IdGenerator {
+
+    private final long epoch;
+    private final int datacenterId;
+    private final int workerId;
+    private long sequence = 0L;
+    private long lastTimestamp = -1L;
+
+    private static final int DATACENTER_ID_BITS = 5;
+    private static final int WORKER_ID_BITS = 5;
+    private static final int SEQUENCE_BITS = 12;
+
+    private static final long MAX_DATACENTER_ID = ~(-1L << DATACENTER_ID_BITS);
+    private static final long MAX_WORKER_ID = ~(-1L << WORKER_ID_BITS);
+    private static final long MAX_SEQUENCE = ~(-1L << SEQUENCE_BITS);
+
+    private static final int DATACENTER_ID_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS;
+    private static final int WORKER_ID_SHIFT = SEQUENCE_BITS;
+    private static final int TIMESTAMP_LEFT_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS + DATACENTER_ID_BITS;
+
+    public IdGenerator(long epoch, int datacenterId, int workerId) {
+        if (datacenterId > MAX_DATACENTER_ID || datacenterId < 0) {
+            throw new IllegalArgumentException(String.format("Datacenter ID can't be greater than %d or less than 0", MAX_DATACENTER_ID));
+        }
+        if (workerId > MAX_WORKER_ID || workerId < 0) {
+            throw new IllegalArgumentException(String.format("Worker ID can't be greater than %d or less than 0", MAX_WORKER_ID));
+        }
+        this.epoch = epoch;
+        this.datacenterId = datacenterId;
+        this.workerId = workerId;
+    }
+
+    public synchronized long generateId() {
+        long timestamp = timeGen();
+
+        if (timestamp < lastTimestamp) {
+            throw new RuntimeException(String.format("Clock moved backwards. Refusing to generate id for %d milliseconds", lastTimestamp - timestamp));
+        }
+
+        if (lastTimestamp == timestamp) {
+            sequence = (sequence + 1) & MAX_SEQUENCE;
+            if (sequence == 0) {
+                timestamp = tilNextMillis(lastTimestamp);
+            }
+        } else {
+            sequence = 0L;
+        }
+
+        lastTimestamp = timestamp;
+
+        return ((timestamp - epoch) << TIMESTAMP_LEFT_SHIFT)
+                | (datacenterId << DATACENTER_ID_SHIFT)
+                | (workerId << WORKER_ID_SHIFT)
+                | sequence;
+    }
+
+     protected long tilNextMillis(long lastTimestamp) {
+        long timestamp = timeGen();
+        while (timestamp <= lastTimestamp) {
+            timestamp = timeGen();
+        }
+        return timestamp;
+    }
+    protected long timeGen() {
+        return System.currentTimeMillis();
+    }
+}
+```
+
+this IdGenerator class implements the core logic of the Snowflake algorithm. It uses a 64-bit integer to represent a unique ID, composed of:
+Timestamp: Milliseconds since the epoch.
+Datacenter ID: Identifies the datacenter.
+Worker ID: Identifies the server within the datacenter.
+Sequence: A counter that increments for each ID generated within the same millisecond.
+
+
+## Main Class
+
+
+```cpp
+public class Main {
+    public static void main(String[] args) {
+        // Set the epoch, datacenter ID, and worker ID
+        long epoch = 1678886400000L; // Example epoch: March 15, 2023
+        int datacenterId = 1;
+        int workerId = 1;
+
+        IdGenerator idGenerator = new IdGenerator(epoch, datacenterId, workerId);
+
+        // Generate and print 10 unique IDs
+        for (int i = 0; i < 10; i++) {
+            long id = idGenerator.generateId();
+            System.out.println("Generated ID: " + id);
+        }
+    }
+}
+
+```
 
 ### References 
 
