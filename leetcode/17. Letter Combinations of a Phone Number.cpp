@@ -28,48 +28,47 @@ Output: ["a","b","c"]
 
 class Solution {
 public:
-    // Main function to return all possible letter combinations for the given digit string
+    // Main function that generates all letter combinations for a given digit string
     vector<string> letterCombinations(string digits) {
-        vector<string> res;  // To store the final list of combinations
+        vector<string> res;
 
         // Edge case: if input is empty, return empty result
         if (digits.empty()) return res;
 
-        // Mapping of digits to their corresponding letters (like a phone keypad)
-        unordered_map<char, string> digitToLetters = {
+        // Mapping of digits to corresponding letters on a phone keypad
+        const unordered_map<char, string> digitToLetters = {
             {'2', "abc"}, {'3', "def"}, {'4', "ghi"}, {'5', "jkl"},
             {'6', "mno"}, {'7', "pqrs"}, {'8', "tuv"}, {'9', "wxyz"}
         };
 
-        // Start backtracking from index 0 with an empty string
-        backtrack(digits, 0, "", res, digitToLetters);
+        // Start backtracking from index 0 with an empty current combination
+        string comb;
+        comb.reserve(digits.size());  // Reserve space to avoid repeated reallocations
+        backtrack(digits, 0, comb, res, digitToLetters);
 
-        return res;
+        return res;        
     }
 
 private:
-    // Helper function to build combinations using backtracking
-    void backtrack(const string& digits, int idx, string comb,
-                   vector<string>& res,
-                   const unordered_map<char, string>& digitToLetters) {
-
-        // Base case: if current index has reached the end of digits,
-        // add the current combination to the result
+    // Helper function to generate combinations using backtracking
+    void backtrack(const string& digits, int idx, string& comb, 
+                   vector<string>& res, const unordered_map<char, string>& digitToLetters) {
+        // Base case: if combination is complete, add to results
         if (idx == digits.length()) {
             res.push_back(comb);
             return;
         }
 
-        // Get the current digit and find its corresponding letters
+        // Get possible letters for current digit
         const string& letters = digitToLetters.at(digits[idx]);
 
-        // For each letter corresponding to the current digit,
-        // append it to the combination and continue recursion
+        // Explore each possible letter for this digit
         for (char letter : letters) {
-            backtrack(digits, idx + 1, comb + letter, res, digitToLetters);
-            // Note: comb + letter creates a new string each time (safe for recursion)
+            comb.push_back(letter);                          // Choose
+            backtrack(digits, idx + 1, comb, res, digitToLetters); // Explore
+            comb.pop_back();                                 // Un-choose (backtrack)
         }
-    }
+    }    
 };
 
 
