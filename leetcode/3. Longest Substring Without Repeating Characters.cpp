@@ -47,3 +47,33 @@ public:
 };
 
 
+// SOLUTION 02 (liitle optimized : combining if-else) :
+
+
+class Solution {
+public:
+    int lengthOfLongestSubstring(string s) {
+        unordered_map<char, int> lastSeen; // Tracks the last index of each character
+        int maxLength = 0;
+        int left = 0; // Left end of the sliding window
+
+        for (int right = 0; right < s.size(); ++right) {
+            char ch = s[right];
+            // If character is repeated and inside current window, move the left pointer
+            if (lastSeen.count(ch) && lastSeen[ch] >= left) {
+                left = lastSeen[ch] + 1;
+            }
+            lastSeen[ch] = right; // Update last seen index
+            maxLength = max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+};
+
+
+
+
+
+
+
