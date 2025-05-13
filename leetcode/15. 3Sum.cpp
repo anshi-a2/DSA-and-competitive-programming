@@ -36,7 +36,7 @@ public:
     vector<vector<int>> threeSum(vector<int>& nums) {
         vector<vector<int>> ans;
         sort(nums.begin(), nums.end());
-        for(int i=0;i<nums.size();i++){
+        for(int i=0;i<nums.size()-2;i++){
             if(i>0 && nums[i]==nums[i-1]){
                 continue;
             }
