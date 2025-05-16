@@ -96,3 +96,148 @@ public class URLQueue {
 }
 ```
 
+### HTTPClientFactory :
+
+```java
+public abstract class HTTPClient {
+    public abstract String sendRequest(String url);
+}
+
+public class SimpleHTTPClient extends HTTPClient {
+    @Override
+    public String sendRequest(String url) {
+        // Simulated HTTP request and response
+        return "<html><head><title>Sample Page</title></head><body><a href=\"http://example.com/page1\">Link</a></body></html>";
+    }
+}
+
+public class HTTPClientFactory {
+    public static HTTPClient createHTTPClient() {
+        return new SimpleHTTPClient();
+    }
+}
+```
+
+
+### PARSER
+
+```java
+import java.util.List;
+
+public interface ParserStrategy {
+    List<String> parse(String content);
+}
+
+public class HTMLParserStrategy implements ParserStrategy {
+    @Override
+    public List<String> parse(String content) {
+        // Simulated HTML parsing
+        List<String> urls = new ArrayList<>();
+        if (content.contains("http://example.com/page1")) {
+            urls.add("http://example.com/page1");
+        }
+        return urls;
+    }
+}
+```
+
+
+### CrawlerObserver
+
+
+```java
+public interface CrawlerObserver {
+    void onNewURLProcessed(String url);
+}
+
+public class ConsoleObserver implements CrawlerObserver {
+    @Override
+    public void onNewURLProcessed(String url) {
+        System.out.println("Processed URL: " + url);
+    }
+}
+```
+
+
+### CrawlCommand
+
+
+```java
+public class CrawlCommand {
+    private String url;
+    private HTTPClient httpClient;
+    private ParserStrategy parser;
+    private CrawlerObserver observer;
+
+    public CrawlCommand(String url, HTTPClient httpClient, ParserStrategy parser, CrawlerObserver observer) {
+        this.url = url;
+        this.httpClient = httpClient;
+        this.parser = parser;
+        this.observer = observer;
+    }
+
+    public void execute() {
+        String content = httpClient.sendRequest(url);
+        List<String> urls = parser.parse(content);
+        URLQueue queue = URLQueue.getInstance();
+        for (String newUrl : urls) {
+            queue.enqueue(newUrl);
+        }
+        observer.onNewURLProcessed(url);
+    }
+}
+```
+
+
+### WebCrawler
+
+```java
+import java.util.concurrent.TimeUnit;
+
+public class WebCrawler {
+    public static void main(String[] args) {
+        URLQueue queue = URLQueue.getInstance();
+        HTTPClient httpClient = HTTPClientFactory.createHTTPClient();
+        ParserStrategy parser = new HTMLParserStrategy();
+        CrawlerObserver observer = new ConsoleObserver();
+
+        // Seed URL
+        queue.enqueue("http://example.com");
+
+        while (!queue.isEmpty()) {
+            String url = queue.dequeue();
+            if (url != null) {
+                CrawlCommand command = new CrawlCommand(url, httpClient, parser, observer);
+                command.execute();
+
+                // Politeness policy: wait for 1 second between requests
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+}
+```
+
+
+## Summary of Features Implemented
+
+- URL Queue: Implemented as a singleton to ensure a single queue instance.
+
+- HTTP Client: Created using the Factory Pattern for flexibility.
+
+- Parser: Strategy Pattern used to allow different parsing algorithms.
+
+- Observer: Implemented to notify when a new URL is processed.
+
+- Command: Encapsulates the crawling request, allowing for easy extension and logging.
+
+- Breadth-First Search (BFS): Ensures broad exploration from the seed URL.
+
+- Politeness Policy: Ensures a delay between requests to avoid server overload.
+
+
+
