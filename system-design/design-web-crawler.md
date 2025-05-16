@@ -56,3 +56,43 @@ from the same host (wikipedia.com). When the crawler tries to download web pages
 
 ![image](https://user-images.githubusercontent.com/23625821/134287891-aee3cc4e-c067-413c-aa61-dd663509dfa8.png)
 
+
+## CODE
+
+### URL QUEUE (singleton pattern) :
+
+```java
+import java.util.LinkedList;
+import java.util.Queue;
+
+public class URLQueue {
+    private static URLQueue instance;
+    private Queue<String> queue;
+
+    private URLQueue() {
+        queue = new LinkedList<>();
+    }
+
+    public static synchronized URLQueue getInstance() {
+        if (instance == null) {
+            instance = new URLQueue();
+        }
+        return instance;
+    }
+
+    public synchronized void enqueue(String url) {
+        if (!queue.contains(url)) {
+            queue.add(url);
+        }
+    }
+
+    public synchronized String dequeue() {
+        return queue.poll();
+    }
+
+    public synchronized boolean isEmpty() {
+        return queue.isEmpty();
+    }
+}
+```
+
