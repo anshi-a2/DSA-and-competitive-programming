@@ -33,46 +33,58 @@ Output: [3,2,1,4,5]
  *     ListNode(int x, ListNode *next) : val(x), next(next) {}
  * };
  */
+
 class Solution {
 private:
+    // Recursive helper function to reverse nodes in groups of k
     ListNode* rec(ListNode* head, int k) {
-        if (!head) return nullptr;
-        
+        if (!head) return nullptr; // Base case: empty list
+
         int c = k;
         ListNode* curr = head;
         ListNode* prev = nullptr;
         ListNode* next = nullptr;
-        
+
+        // Try to reverse k nodes
         while (curr && c > 0) {
-            next = curr->next;
-            curr->next = prev;
-            prev = curr;
-            curr = next;
+            next = curr->next;    // Save next node
+            curr->next = prev;    // Reverse current node's pointer
+            prev = curr;          // Move prev to current
+            curr = next;          // Move to next node
             c--;
         }
-        
-        if (c > 0) {  // If remaining nodes are less than k, reverse again to restore
+
+        // If we reversed fewer than k nodes, restore the original order
+        if (c > 0) {
+            // Reverse again to undo the partial reversal
             curr = prev;
             prev = nullptr;
             next = nullptr;
-            
+
             while (curr) {
                 next = curr->next;
                 curr->next = prev;
                 prev = curr;
                 curr = next;
             }
-            return prev;
+
+            return prev; // Return the head of the restored list
         }
-        
+
+        // Recursively call for the remaining list starting from current
         head->next = rec(curr, k);
+
+        // Return the new head of the reversed segment
         return prev;
     }
-    
+
 public:
+    // Main function to reverse nodes in k-group
     ListNode* reverseKGroup(ListNode* head, int k) {
         return rec(head, k);
     }
 };
+
+
 
 
